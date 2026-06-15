@@ -6,7 +6,7 @@ const Donation = require("../models/Donation");
 const { protect } = require("../middleware/auth");
 
 // 1. POST /api/drivers - Register a new driver
-router.post("/", protect, async (req, res) => {
+router.post("/", protect, async (req, res) => { 
   try {
     const { name, phone, vehicleNo } = req.body;
 
