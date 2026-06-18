@@ -10,18 +10,10 @@ dotenv.config();
 connectDB();
 
 const app = express();
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://food-save-smoky.vercel.app"
-    ],
-    credentials: true
-  })
-);
+app.use(cors());
 app.use(express.json());
-
-// Routes
+  
+// Routes  
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/food', require('./routes/foodRoutes'));
 app.use('/api/pickup', require('./routes/pickupRoutes'));
@@ -29,9 +21,9 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 app.use("/api/drivers",   require("./routes/Driverroutes"));
-app.use("/api/donations", require("./routes/Donationroutes"));
+app.use("/api/donations", require("./routes/donationRoutes"));
 
-
+ 
 // Cron job — check expiring food every hour
 cron.schedule('0 * * * *', async () => {
   const soon = new Date(Date.now() + 24 * 60 * 60 * 1000);

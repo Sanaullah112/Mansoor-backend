@@ -43,7 +43,7 @@ const seed = async () => {
     admin = new User({
       name: 'FoodSave Admin',
       phone: '03349488999',
-      password: '112233',
+      password: '112233', 
       role: 'admin',
       address: 'Mingora, Swat'
     });

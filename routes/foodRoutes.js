@@ -1,23 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const { createListing, getListings, getMyListings, updateListing, deleteListing, getAvailableFood, createRequest, getNGOHistory } = require('../controllers/foodController');
+const { createListing, getListings, getMyListings, updateListing, deleteListing, getAvailableFood, createRequest,  getDonorRequests, updateRequestStatus } = require('../controllers/foodController');
 const { protect, authorizeRoles } = require('../middleware/auth');
 const { createFeedback, getFeedbackHistory, getDonationOptions } = require('../controllers/foodControllerFeedback');
-const FoodListing = require('../models/FoodListing');
 
 
 
 router.get('/', getAvailableFood);
 router.post('/requests', protect, createRequest);
-router.get('/requests/my-history', protect, getNGOHistory);
+// router.get('/requests/my-history', protect, getNGOHistory);
+router.get('/requests/donor', protect, authorizeRoles('donor'), getDonorRequests);
+router.put('/requests/:id', protect, updateRequestStatus);
+
 
 router.route('/feedback')
   .post(protect, createFeedback);
 
-router.route('/history')
-  .get(protect, getFeedbackHistory);
+router.route('/history') 
+  .get(protect, getFeedbackHistory); 
 
-// Your existing listing route
+  // Your existing listing route
 router.get('/listings', getListings);
 
 // The NEW route for your feedback dropdown menu
@@ -37,6 +39,7 @@ router.get('/public', async (req, res) => {
     }
   })
 
+router.get('/', protect, getListings);
 router.post('/', protect, authorizeRoles('donor', 'admin'), createListing);
 router.get('/my', protect, authorizeRoles('donor'), getMyListings);
 router.put('/:id', protect, authorizeRoles('donor', 'admin'), updateListing);

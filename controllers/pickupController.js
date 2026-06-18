@@ -10,6 +10,15 @@ const createRequest = async (req, res) => {
     if (listing.status !== 'available')
       return res.status(400).json({ message: 'Listing is not available' });
 
+    const alreadyRequested = await PickupRequest.findOne({
+      listing: listing._id,
+      ngo: req.user._id
+    });
+
+    if (alreadyRequested) {
+      return res.status(400).json({ message: 'You already requested this pickup.' });
+    }
+
     const request = await PickupRequest.create({
       listing: listing._id,
       ngo: req.user._id
@@ -24,7 +33,11 @@ const createRequest = async (req, res) => {
       type: 'info'
     });
 
-    res.status(201).json(request);
+    const populated = await PickupRequest.findById(request._id)
+      .populate({ path: 'listing', populate: { path: 'donor', select: 'name email phone' } })
+      .populate('ngo', 'name email');
+
+    res.status(201).json(populated);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -37,16 +50,22 @@ const updateRequestStatus = async (req, res) => {
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
     const { status } = req.body;
+    if (!['pending', 'accepted', 'rejected', 'collected', 'delivered'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
     request.status = status;
     if (status === 'delivered') request.fulfilledAt = new Date();
     await request.save();
 
-    if (status === 'accepted') {
+    if (status === 'accepted' || status === 'collected') {
       request.listing.status = 'collected';
       await request.listing.save();
       await Notification.create({
         user: request.ngo,
-        message: `Your pickup request has been accepted!`,
+        message: status === 'accepted'
+          ? 'Your pickup request has been accepted!'
+          : 'The pickup has been marked as collected.',
         type: 'success'
       });
     }
@@ -56,7 +75,7 @@ const updateRequestStatus = async (req, res) => {
       await request.listing.save();
       await Notification.create({
         user: request.ngo,
-        message: `Your pickup request was rejected. Try another listing.`,
+        message: 'Your pickup request was rejected. Try another listing.',
         type: 'alert'
       });
     }
@@ -71,7 +90,12 @@ const updateRequestStatus = async (req, res) => {
 const getMyRequests = async (req, res) => {
   try {
     const requests = await PickupRequest.find({ ngo: req.user._id })
-      .populate('listing').populate('driver', 'name phone');
+      .populate({
+        path: 'listing',
+        populate: { path: 'donor', select: 'name email phone address' }
+      })
+      .populate('driver', 'name phone')
+      .sort({ requestedAt: -1 });
     res.json(requests);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -84,7 +108,12 @@ const getDonorRequests = async (req, res) => {
     const myListings = await FoodListing.find({ donor: req.user._id });
     const ids = myListings.map(l => l._id);
     const requests = await PickupRequest.find({ listing: { $in: ids } })
-      .populate('listing').populate('ngo', 'name email phone');
+      .populate({
+        path: 'listing',
+        populate: { path: 'donor', select: 'name email phone address' }
+      })
+      .populate('ngo', 'name email phone')
+      .sort({ requestedAt: -1 });
     res.json(requests);
   } catch (error) {
     res.status(500).json({ message: error.message });
